@@ -37,7 +37,8 @@ jobs:
           python-version: "3.12"
 
       - name: Build and upload (placeholder)
-        run: echo "TODO: build the app and upload to the store track"
+        run: |
+          echo "TODO: build the app and upload to the store track"
 
       - name: Stamp build onto Plane RM item
         env:
