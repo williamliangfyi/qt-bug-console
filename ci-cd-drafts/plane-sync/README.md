@@ -1,4 +1,9 @@
-# Plane Sync — live demo (approach C: custom API bot)
+# Plane Sync — PR state bot (SUPERSEDED by native integration)
+
+> ⚠️ **Do not use in production.** Plane's native GitHub integration already moves
+> work-item state on PR events and links PRs — this bot duplicates it. Kept only as
+> a self-contained **demo** of the mechanics (no org-owner access needed).
+> For the non-redundant CD build-stamping, see **`../plane-cd/`**.
 
 Demonstrates "open a PR → the Plane ticket moves itself." Runs entirely inside a
 **personal fork** + a **sandbox Plane workspace**, so it needs no org-owner
