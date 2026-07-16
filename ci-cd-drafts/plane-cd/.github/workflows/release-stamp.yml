@@ -41,7 +41,8 @@ jobs:
 
       # ---- Real CD would build + upload here (signing secrets, fastlane, etc.) ----
       - name: Build & upload (placeholder)
-        run: echo "TODO: build the app and upload to the store track"
+        run: |
+          echo "TODO: build the app and upload to the store track"
 
       - name: Stamp build onto Plane RM item
         env:
