@@ -10,7 +10,11 @@ access and never touches live `DEVS` tickets.
 
 ## Files
 - `.github/workflows/plane-sync.yml` — triggers on PR events, sets target state.
-- `.github/scripts/plane_sync.py` — stdlib-only; finds `[ABC-123]` in the PR title/branch and PATCHes the work item's state.
+- `.github/scripts/plane_sync.py` — stdlib-only; finds `[ABC-123]` in the PR title/branch, PATCHes the work item's state, and stamps the GitHub build onto it.
+
+## What it does on a PR
+- **Moves state:** PR opened/reopened/ready → **In Progress**; PR merged → **Done**.
+- **Stamps the build:** adds a **comment** (`🔧 GitHub CI — build #<run_number> (PR #n) moved DEVOPS-x to <state>`) and a **link** (`CI build #<n>`) pointing at the Actions run URL. Build tagging is best-effort — if it fails, the state move still succeeds.
 
 ## One-time setup (in your personal fork)
 
@@ -53,5 +57,9 @@ Open a PR **within your fork** titled: `[DEVOPS-2] demo fix`.
   - `pull_request` from an *outside* fork gets **no secrets** (GitHub security) — fine for this same-fork demo; for real cross-fork contributions you'd use the native integration or `pull_request_target` (with its risks).
   - This is a bot we maintain; the **native Plane integration** does the same thing with zero code — recommend it for production.
 
-## Verified
-This script was tested against `DEVOPS-2`: PR title `[DEVOPS-2] …` moved it Todo→In Progress, was idempotent on re-run, and reset cleanly. State UUIDs in the DevOps project: Todo `8464758a…`, In Progress `16165fcc…`, Done `2c82b407…`.
+## Verified live
+Proven end-to-end on `williamliangfyi/qt-bug-console` against the `test-workspace`
+DevOps project: a real PR (`[DEVOPS-2] …`) triggered the *Plane Sync* Action, which
+moved `DEVOPS-2` Todo→In Progress on open and →Done on merge, and posted a build
+comment + run link each time. State UUIDs in the DevOps project: Todo `8464758a…`,
+In Progress `16165fcc…`, Done `2c82b407…`.
