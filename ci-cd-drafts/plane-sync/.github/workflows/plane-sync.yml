@@ -43,4 +43,9 @@ jobs:
           PR_BRANCH: ${{ github.event.pull_request.head.ref }}
           # merged PR -> Done, otherwise -> In Progress
           TARGET_STATE: ${{ github.event.pull_request.merged == true && 'Done' || 'In Progress' }}
+          # build metadata stamped onto the work item (comment + link)
+          BUILD_NUMBER: ${{ github.run_number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: python .github/scripts/plane_sync.py
