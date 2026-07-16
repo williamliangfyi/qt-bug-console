@@ -1,15 +1,11 @@
 name: Release Stamp (Plane CD)
 
-# Records a release BUILD onto a Plane Release Management work item — the piece
-# the native Plane↔GitHub integration cannot do (native syncs PR state, not CI
+# Records a release build onto a Plane Release Management work item -- the piece
+# the native Plane GitHub integration cannot do (native syncs PR state, not CI
 # build/artifact info). On a release it adds a build comment + artifact link to
 # the RM item and moves it to "Deployed / Live".
 #
 # Requires repo secrets: PLANE_API_TOKEN, PLANE_BASE_URL, PLANE_WORKSPACE_SLUG.
-#
-# Triggers:
-#   - workflow_dispatch: manual/demo, with explicit inputs
-#   - release published: version = tag, RM ref parsed from the release notes ([RM-x])
 
 on:
   workflow_dispatch:
@@ -22,6 +18,7 @@ on:
         required: true
       track:
         description: "Destination track"
+        required: false
         default: "TestFlight"
   release:
     types: [published]
@@ -39,8 +36,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      # ---- Real CD would build + upload here (signing secrets, fastlane, etc.) ----
-      - name: Build & upload (placeholder)
+      - name: Build and upload (placeholder)
         run: echo "TODO: build the app and upload to the store track"
 
       - name: Stamp build onto Plane RM item
@@ -54,6 +50,5 @@ jobs:
           RELEASE_BODY: ${{ github.event.release.body }}
           BUILD_NUMBER: ${{ github.run_number }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          # ARTIFACT_URL: <set to the store/build URL once the upload step provides it>
           DEPLOY_STATE: "Deployed / Live"
         run: python .github/scripts/plane_release_stamp.py
