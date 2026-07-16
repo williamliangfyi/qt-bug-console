@@ -1,0 +1,59 @@
+name: Release Stamp (Plane CD)
+
+# Records a release BUILD onto a Plane Release Management work item — the piece
+# the native Plane↔GitHub integration cannot do (native syncs PR state, not CI
+# build/artifact info). On a release it adds a build comment + artifact link to
+# the RM item and moves it to "Deployed / Live".
+#
+# Requires repo secrets: PLANE_API_TOKEN, PLANE_BASE_URL, PLANE_WORKSPACE_SLUG.
+#
+# Triggers:
+#   - workflow_dispatch: manual/demo, with explicit inputs
+#   - release published: version = tag, RM ref parsed from the release notes ([RM-x])
+
+on:
+  workflow_dispatch:
+    inputs:
+      rm_ref:
+        description: "Release Management work item, e.g. RM-8"
+        required: true
+      version:
+        description: "Release version, e.g. 2.1.0"
+        required: true
+      track:
+        description: "Destination track"
+        default: "TestFlight"
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  release-stamp:
+    name: Stamp release build onto Plane
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # ---- Real CD would build + upload here (signing secrets, fastlane, etc.) ----
+      - name: Build & upload (placeholder)
+        run: echo "TODO: build the app and upload to the store track"
+
+      - name: Stamp build onto Plane RM item
+        env:
+          PLANE_API_TOKEN: ${{ secrets.PLANE_API_TOKEN }}
+          PLANE_BASE_URL: ${{ secrets.PLANE_BASE_URL }}
+          PLANE_WORKSPACE_SLUG: ${{ secrets.PLANE_WORKSPACE_SLUG }}
+          RM_REF: ${{ github.event.inputs.rm_ref }}
+          VERSION: ${{ github.event.inputs.version || github.event.release.tag_name }}
+          TRACK: ${{ github.event.inputs.track || 'TestFlight' }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          # ARTIFACT_URL: <set to the store/build URL once the upload step provides it>
+          DEPLOY_STATE: "Deployed / Live"
+        run: python .github/scripts/plane_release_stamp.py
