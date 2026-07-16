@@ -1,0 +1,51 @@
+name: Plane Sync
+
+# Demo of PR -> Plane state automation (approach C: custom API bot).
+# Moves the work item referenced as [ABC-123] in the PR title:
+#   PR opened / reopened / ready for review -> In Progress
+#   PR merged                               -> Done
+#
+# Requires four repo secrets (Settings -> Secrets and variables -> Actions):
+#   PLANE_API_TOKEN        your Plane API token (never hardcoded)
+#   PLANE_BASE_URL         e.g. https://squad.fyi.fyi
+#   PLANE_WORKSPACE_SLUG   e.g. test-workspace   (use a SANDBOX workspace to demo)
+#   PLANE_PROJECT_ID       UUID of the target Plane project
+#
+# NOTE: pull_request events from a *forked* repo do NOT receive secrets (GitHub
+# security). This demo runs branch->main inside your own fork, so secrets work.
+# For the real xuper-app, prefer Plane's native GitHub integration instead.
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, closed]
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Update Plane work item
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Sync PR state to Plane
+        env:
+          PLANE_API_TOKEN: ${{ secrets.PLANE_API_TOKEN }}
+          PLANE_BASE_URL: ${{ secrets.PLANE_BASE_URL }}
+          PLANE_WORKSPACE_SLUG: ${{ secrets.PLANE_WORKSPACE_SLUG }}
+          PLANE_PROJECT_ID: ${{ secrets.PLANE_PROJECT_ID }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          # merged PR -> Done, otherwise -> In Progress
+          TARGET_STATE: ${{ github.event.pull_request.merged == true && 'Done' || 'In Progress' }}
+          # build metadata stamped onto the work item (comment + link)
+          BUILD_NUMBER: ${{ github.run_number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: python .github/scripts/plane_sync.py
