@@ -1,0 +1,131 @@
+name: CI
+
+# Plug-and-play quality gate for xuper-app.
+# Drop this file at .github/workflows/ci.yml in the repo. It auto-detects the
+# build system (CMake or qmake) and reads the Qt version from a repo variable,
+# so no edits to this file are required in the common case.
+#
+# Optional config (Settings -> Secrets and variables -> Actions -> Variables):
+#   QT_VERSION   e.g. "6.11.*"  (default below is used if unset)
+#
+# Android/iOS build + signing live in ADMIN_CHECKLIST.md and stay disabled here.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    name: clang-format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+
+      - name: Check C/C++ formatting
+        run: |
+          mapfile -t files < <(git ls-files '*.c' '*.cc' '*.cpp' '*.cxx' '*.h' '*.hpp' '*.hxx')
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No C/C++ files tracked — nothing to check."
+            exit 0
+          fi
+          if [ ! -f .clang-format ]; then
+            echo "::warning::No .clang-format committed; using clang-format's LLVM defaults."
+          fi
+          clang-format --dry-run --Werror "${files[@]}"
+
+  build-test:
+    name: Build & unit test (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ vars.QT_VERSION || '6.11.*' }}
+          cache: true
+
+      - name: Detect build system
+        id: detect
+        run: |
+          if [ -f CMakeLists.txt ]; then
+            echo "system=cmake" >> "$GITHUB_OUTPUT"
+          elif ls ./*.pro >/dev/null 2>&1; then
+            echo "system=qmake" >> "$GITHUB_OUTPUT"
+          else
+            echo "system=none" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Detected build system: $(cat "$GITHUB_OUTPUT")"
+
+      - name: Build & test (CMake)
+        if: steps.detect.outputs.system == 'cmake'
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --parallel
+          # --no-tests=ignore: pass cleanly if the repo has no ctest tests yet.
+          ctest --test-dir build --output-on-failure --no-tests=ignore
+
+      - name: Build (qmake)
+        if: steps.detect.outputs.system == 'qmake'
+        run: |
+          qmake
+          make -j"$(nproc)"
+
+      - name: No build system found
+        if: steps.detect.outputs.system == 'none'
+        run: |
+          echo "::error::No CMakeLists.txt or *.pro found at repo root."
+          echo "Point this job at the real build entrypoint (see ci-cd-drafts/README.md)."
+          exit 1
+
+  # ---------------------------------------------------------------------------
+  # MOBILE BUILDS — disabled until an admin provisions runners + signing secrets
+  # (see ADMIN_CHECKLIST.md). Flip `if: false` once prerequisites are in place.
+  # ---------------------------------------------------------------------------
+
+  android:
+    name: Android build (disabled)
+    if: false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ vars.QT_VERSION || '6.11.*' }}
+          target: android
+          arch: android_arm64_v8a
+          cache: true
+      # TODO: Android NDK + gradle/cmake build; signing from ANDROID_* secrets.
+      - run: echo "Android build placeholder"
+
+  ios:
+    name: iOS build (disabled)
+    if: false
+    runs-on: macos-14   # higher-cost runner — enable deliberately.
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ vars.QT_VERSION || '6.11.*' }}
+          target: ios
+          cache: true
+      # TODO: xcodebuild archive/export; signing from APPLE_* secrets.
+      - run: echo "iOS build placeholder"
